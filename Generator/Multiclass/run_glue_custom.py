@@ -226,6 +226,8 @@ def main():
                     logger.info("  %s = %s", key, value)
                     writer.write("%s = %s\n" % (key, value))
 
+        if output_mode == "classification":
+            results = np.argmax(results, axis=1)
         output_eval_file = os.path.join(training_args.output_dir, "eval_predictions_checkpoint.txt")
         if trainer.is_world_master():
             with open(output_eval_file, "w") as writer:
@@ -235,7 +237,7 @@ def main():
                     if output_mode == "regression":
                         writer.write("%d\t%3.3f\n" % (index, item))
                     else:
-                        item = test_dataset.get_labels(data_args.label_dir)[item]
+                        item = glue_processors[data_args.task_name]().get_labels(data_args.label_dir)[item]
                         writer.write("%d\t%s\n" % (index, item))
 
 
@@ -253,13 +255,12 @@ def main():
         for test_dataset in test_datasets:
             predictions = trainer.predict(test_dataset=test_dataset)
             metrics, results = predictions.metrics, predictions.predictions
-
             output_eval_file = os.path.join(
                 training_args.output_dir, f"test_results_checkpoint.txt"
             )
             if trainer.is_world_master():
                 with open(output_eval_file, "w") as writer:
-                    logger.info("***** Eval results {} *****".format(eval_dataset.args.task_name))
+                    logger.info("***** Eval results {} *****".format(data_args.task_name))
                     for key, value in metrics.items():
                         logger.info("  %s = %s", key, value)
                         writer.write("%s = %s\n" % (key, value))
@@ -272,13 +273,13 @@ def main():
             )
             if trainer.is_world_master():
                 with open(output_test_file, "w") as writer:
-                    logger.info("***** Test results {} *****".format(test_dataset.args.task_name))
+                    logger.info("***** Test results {} *****".format(data_args.task_name))
                     writer.write("index\tprediction\n")
                     for index, item in enumerate(results):
                         if output_mode == "regression":
                             writer.write("%d\t%3.3f\n" % (index, item))
                         else:
-                            item = test_dataset.get_labels(data_args.label_dir)[item]
+                            item = glue_processors[data_args.task_name]().get_labels(data_args.label_dir)[item]
                             writer.write("%d\t%s\n" % (index, item))
     return eval_results
 
